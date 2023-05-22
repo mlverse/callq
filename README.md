@@ -38,45 +38,47 @@ differences listed below:
 You can install the development version of callq like so:
 
 ``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+remotes::install_github("mlverse/callq")
 ```
 
-## Example
+## Examples
 
-Below we will use callq to create a task queue and run tasks on it. The
-motivating example here is:
+Below we show how to use callq as a task queue in a shiny app that runs
+runs long computations.
 
-1.  We crate a large data.frame on each worker
-2.  We execute tasks that depend on the data.frame that lives in the
-    worker
+The following app takes \~3s to start compared to the 10s that it would
+take if the ‘long-running’ computations were not running in background
+workers.
 
 ``` r
-library(callq)
+library(shiny)
 library(promises)
-library(magrittr)
+library(callq)
 
-q <- task_q$new(num_workers = 2)
+q <- task_q$new(num_workers = 4)
 
-initialize_large_df <- function() {
-  state <<- new.env(parent = emptyenv())
-  state$df <<- data.frame(x = runif(1e5), y = runif(1e4))
-  "done"
+ui <- fluidPage(
+  fluidRow(
+    plotOutput("one"),
+    plotOutput("two"),  
+  ),
+  fluidRow(
+    plotOutput("three"),
+    plotOutput("four"),  
+  )
+)
+
+make_plot <- function(time) {
+  Sys.sleep(time)
+  runif(10)
 }
 
-p <- q$worker_map(initialize_large_df) %>% 
-  promise_all(.list = .) %>% 
-  then(function(x) {
-    cat("Initialization done")
-  })
-#> exec: starting the loop 
-#> tasks size:  1 | idles:  0 
-#> rescheduling
+server <- function(input, output, session) {
+  output$one <- renderPlot({q$push(make_plot, list(time = 2.5)) %...>% plot()})
+  output$two <- renderPlot({q$push(make_plot, list(time = 2.5)) %...>% plot()})
+  output$three <- renderPlot({q$push(make_plot, list(time = 2.5)) %...>% plot()})
+  output$four <- renderPlot({q$push(make_plot, list(time = 2.5)) %...>% plot()})
+}
 
-p1 <- q$push(~summary(state$df))
-p2 <- q$push(~summary(state$df))
-
-p1 %>%
-  then(function(x) {
-    print(x)
-  })
+shiny::shinyApp(ui, server)
 ```

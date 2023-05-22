@@ -41,7 +41,7 @@ Compared to the `promises::future_promises` solution it has a few differences li
 You can install the development version of callq like so:
 
 ``` r
-# FILL THIS IN! HOW CAN PEOPLE INSTALL YOUR DEV PACKAGE?
+remotes::install_github("mlverse/callq")
 ```
 
 ## Examples
