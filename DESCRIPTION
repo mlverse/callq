@@ -23,3 +23,5 @@ Imports:
     R6,
     rlang,
     uuid
+URL: https://github.com/mlverse/callq
+BugReports: https://github.com/mlverse/callq/issues
