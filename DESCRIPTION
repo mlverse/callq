@@ -1,0 +1,25 @@
+Package: callq
+Title: Promise Task Queues
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Daniel", "Falbel", , "daniel@posit.co", role = c("aut", "cre")),
+    person(family = "Posit", role = c("cph"))
+    )
+Description: Task queue implemented on top of 'callr' and 'promises' in order
+    to make it easier to use for asyncronous tasks.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Imports: 
+    callr,
+    cli,
+    fastmap,
+    later,
+    promises,
+    R6,
+    rlang,
+    uuid
