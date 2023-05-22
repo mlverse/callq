@@ -4,6 +4,8 @@
 # callq
 
 <!-- badges: start -->
+
+[![R-CMD-check](https://github.com/mlverse/callq/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mlverse/callq/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 callq implements a multi process task queue using
