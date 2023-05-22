@@ -145,14 +145,19 @@ task_q <- R6::R6Class(
     },
     later_process = function() {
       if (is.null(self$loop)) {
-        self$loop <- later::create_loop()
+        current_loop <- later::current_loop()
+        self$loop <- later::create_loop(parent = current_loop)
       }
 
+      # process tasks might have zero out the tasks in the poll but still the
+      # event loop might still be required. just in case, we run the loop another
+      # time.
+      tasks <- private$n_tasks()
       private$process_tasks()
 
       # if no more tasks and workers are all idle, we don't need to reschedule
       # the process_tasks event loop.
-      if (private$n_tasks() == 0) {
+      if (tasks == 0) {
         self$loop <- NULL
         return()
       }
