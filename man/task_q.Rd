@@ -27,19 +27,26 @@ handle the promise.
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
-\item \href{#method-NA-new}{\code{task_q$new()}}
-\item \href{#method-NA-push}{\code{task_q$push()}}
-\item \href{#method-NA-worker_map}{\code{task_q$worker_map()}}
-\item \href{#method-unknown-clone}{\code{task_q$clone()}}
+\item \href{#method-callq_task_q-new}{\code{task_q$new()}}
+\item \href{#method-callq_task_q-push}{\code{task_q$push()}}
+\item \href{#method-callq_task_q-worker_map}{\code{task_q$worker_map()}}
+\item \href{#method-callq_task_q-worker_exec}{\code{task_q$worker_exec()}}
+\item \href{#method-callq_task_q-clone}{\code{task_q$clone()}}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-NA-new"></a>}}
-\if{latex}{\out{\hypertarget{method-NA-new}{}}}
+\if{html}{\out{<a id="method-callq_task_q-new"></a>}}
+\if{latex}{\out{\hypertarget{method-callq_task_q-new}{}}}
 \subsection{Method \code{new()}}{
 Creates a new task queue
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{task_q$new(num_workers, ..., worker_options = NULL, process_tasks_delay = 0.1)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{task_q$new(
+  num_workers,
+  ...,
+  worker_options = NULL,
+  process_tasks_delay = 0.1,
+  redirect_stdout = TRUE
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -56,13 +63,17 @@ object. Should be created with \code{\link[callr:r_session_options]{callr::r_ses
 \item{\code{process_tasks_delay}}{Number of seconds in the future to delay execution. There is no
 guarantee that the function will be executed at the desired time, but it
 should not execute earlier.}
+
+\item{\code{redirect_stdout}}{Bool indicating if workers stdout should be redirected
+to the main process. By default it's redirected. When it's \code{TRUE}, the \code{worker_options}
+\code{stdout} element should be a \code{|}.}
 }
 \if{html}{\out{</div>}}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-NA-push"></a>}}
-\if{latex}{\out{\hypertarget{method-NA-push}{}}}
+\if{html}{\out{<a id="method-callq_task_q-push"></a>}}
+\if{latex}{\out{\hypertarget{method-callq_task_q-push}{}}}
 \subsection{Method \code{push()}}{
 Push a new task to the queue
 Returns a \code{\link[promises:promise]{promises::promise()}} that can be used in the same contexts as eg,
@@ -83,8 +94,8 @@ See notes in \code{\link[callr:r]{callr::r()}}.}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-NA-worker_map"></a>}}
-\if{latex}{\out{\hypertarget{method-NA-worker_map}{}}}
+\if{html}{\out{<a id="method-callq_task_q-worker_map"></a>}}
+\if{latex}{\out{\hypertarget{method-callq_task_q-worker_map}{}}}
 \subsection{Method \code{worker_map()}}{
 Allows applying a function for every worker.
 It can be useful to initialize workers, eg, add make sure some state is
@@ -108,8 +119,30 @@ See notes in \code{\link[callr:r]{callr::r()}}.}
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-unknown-clone"></a>}}
-\if{latex}{\out{\hypertarget{method-unknown-clone}{}}}
+\if{html}{\out{<a id="method-callq_task_q-worker_exec"></a>}}
+\if{latex}{\out{\hypertarget{method-callq_task_q-worker_exec}{}}}
+\subsection{Method \code{worker_exec()}}{
+Run a task in the worker specified with an index
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{task_q$worker_exec(index, func, args = list())}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{index}}{integer specifying a worker index}
+
+\item{\code{func}}{a function object to call in one of the background workers.
+See notes in \code{\link[callr:r]{callr::r()}}.}
+
+\item{\code{args}}{arguments to pass to the function \code{func}. Must be a list.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-callq_task_q-clone"></a>}}
+\if{latex}{\out{\hypertarget{method-callq_task_q-clone}{}}}
 \subsection{Method \code{clone()}}{
 The objects of this class are cloneable with this method.
 \subsection{Usage}{

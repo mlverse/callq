@@ -23,3 +23,17 @@ test_that("can initialize workers", {
     expect_equal(extract_value(results[[i]]), "hello world")
   }
 })
+
+test_that("redirect stdout", {
+  q <- task_q$new(num_workers = 1)
+  expect_snapshot({
+    p <- q$push(function() {
+      for (i in 1:10) {
+        cat("hello world", "\n");
+      }
+      i
+    })
+    result <- extract_value(p)
+  })
+  expect_equal(result, 10)
+})

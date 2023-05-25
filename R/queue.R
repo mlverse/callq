@@ -9,6 +9,7 @@
 #' @importFrom fastmap fastqueue
 #' @importFrom rlang as_function
 task_q <- R6::R6Class(
+  classname = "callq_task_q",
   lock_objects = FALSE,
   public = list(
     #' @field workers list containing instances of workers objects
@@ -31,11 +32,19 @@ task_q <- R6::R6Class(
     #' @param process_tasks_delay Number of seconds in the future to delay execution. There is no
     #'  guarantee that the function will be executed at the desired time, but it
     #'  should not execute earlier.
-    initialize = function(num_workers, ..., worker_options = NULL, process_tasks_delay = 0.1) {
+    #' @param redirect_stdout Bool indicating if workers stdout should be redirected
+    #'  to the main process. By default it's redirected. When it's `TRUE`, the `worker_options`
+    #'  `stdout` element should be a `|`.
+    initialize = function(num_workers, ..., worker_options = NULL, process_tasks_delay = 0.1, redirect_stdout = TRUE) {
       self$num_workers <- num_workers
-      self$worker_options <- if (is.null(worker_options)) callr::r_session_options() else worker_options
+      self$worker_options <- if (is.null(worker_options)) {
+        callr::r_session_options(stdout = "|")
+      } else {
+        worker_options
+      }
       self$tasks <- fastmap::fastqueue()
       self$process_tasks_delay <- process_tasks_delay
+      self$redirect_stdout <- redirect_stdout
 
       private$start_workers()
     },
@@ -103,7 +112,7 @@ task_q <- R6::R6Class(
       self$workers <- lapply(
         seq_len(self$num_workers),
         function(x) {
-          Worker$new(wait = FALSE, options = self$worker_options)
+          Worker$new(wait = FALSE, options = self$worker_options, id = x)
         }
       )
     },
@@ -139,8 +148,18 @@ task_q <- R6::R6Class(
         }
       }
     },
+    redirect_stdout = function() {
+      for (worker in self$workers) {
+        worker$redirect_stdout()
+      }
+    },
     process_tasks = function(timeout = 1) {
       private$call_tasks()
+
+      if (self$redirect_stdout) {
+        private$redirect_stdout()
+      }
+
       private$resolve_tasks(timeout)
     },
     later_process = function() {
@@ -203,9 +222,11 @@ Worker <- R6::R6Class(
   public = list(
     tasks = NULL,
     session = NULL,
-    initialize = function(...) {
+    id = NULL,
+    initialize = function(..., id = uuid()) {
       self$session <- callr::r_session$new(...)
       self$tasks <- fastmap::fastqueue()
+      self$id <- id
     },
     call_task = function() {
       if (!self$is_idle()) return()
@@ -216,6 +237,14 @@ Worker <- R6::R6Class(
     add_task = function(task) {
       self$tasks$add(task)
       self$call_task()
+    },
+    redirect_stdout = function() {
+      out <- self$session$read_output_lines()
+      if (length(out) > 0) {
+        for (line in out) {
+          cat("[callq worker: <", self$id, ">] ",  line, "\n", sep="")
+        }
+      }
     },
     resolve_task = function() {
       if (self$session$get_state() == "starting") {
