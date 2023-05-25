@@ -25,6 +25,7 @@ test_that("can initialize workers", {
 })
 
 test_that("redirect stdout", {
+  skip_on_os("windows")
   q <- task_q$new(num_workers = 1)
   expect_snapshot({
     p <- q$push(function() {
@@ -40,6 +41,7 @@ test_that("redirect stdout", {
 })
 
 test_that("redirect stderr", {
+  skip_on_os("windows")
   q <- task_q$new(num_workers = 1)
   out <- capture.output(type = "message", {
     p <- q$push(function() {
