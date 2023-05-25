@@ -8,6 +8,7 @@
 #' @importFrom cli cli_abort
 #' @importFrom fastmap fastqueue
 #' @importFrom rlang as_function
+#' @importFrom R6 R6Class
 task_q <- R6::R6Class(
   classname = "callq_task_q",
   lock_objects = FALSE,
@@ -32,19 +33,19 @@ task_q <- R6::R6Class(
     #' @param process_tasks_delay Number of seconds in the future to delay execution. There is no
     #'  guarantee that the function will be executed at the desired time, but it
     #'  should not execute earlier.
-    #' @param redirect_stdout Bool indicating if workers stdout should be redirected
+    #' @param redirect_output Bool indicating if workers output should be redirected
     #'  to the main process. By default it's redirected. When it's `TRUE`, the `worker_options`
-    #'  `stdout` element should be a `|`.
-    initialize = function(num_workers, ..., worker_options = NULL, process_tasks_delay = 0.1, redirect_stdout = TRUE) {
+    #'  `stdout` and `stderr` element should be a `|`.
+    initialize = function(num_workers, ..., worker_options = NULL, process_tasks_delay = 0.1, redirect_output = TRUE) {
       self$num_workers <- num_workers
       self$worker_options <- if (is.null(worker_options)) {
-        callr::r_session_options(stdout = "|")
+        callr::r_session_options(stdout = "|", stderr= "|")
       } else {
         worker_options
       }
       self$tasks <- fastmap::fastqueue()
       self$process_tasks_delay <- process_tasks_delay
-      self$redirect_stdout <- redirect_stdout
+      self$redirect_output <- redirect_output
 
       private$start_workers()
     },
@@ -148,16 +149,16 @@ task_q <- R6::R6Class(
         }
       }
     },
-    redirect_stdout = function() {
+    redirect_output = function() {
       for (worker in self$workers) {
-        worker$redirect_stdout()
+        worker$redirect_output()
       }
     },
     process_tasks = function(timeout = 1) {
       private$call_tasks()
 
-      if (self$redirect_stdout) {
-        private$redirect_stdout()
+      if (self$redirect_output) {
+        private$redirect_output()
       }
 
       private$resolve_tasks(timeout)
@@ -238,11 +239,18 @@ Worker <- R6::R6Class(
       self$tasks$add(task)
       self$call_task()
     },
-    redirect_stdout = function() {
+    redirect_output = function() {
       out <- self$session$read_output_lines()
       if (length(out) > 0) {
         for (line in out) {
           cat("[callq worker: <", self$id, ">] ",  line, "\n", sep="")
+        }
+      }
+
+      out <- self$session$read_error_lines()
+      if (length(out) > 0) {
+        for (line in out) {
+          cat("[callq worker: <", self$id, ">] ",  line, "\n", sep="", file = stderr())
         }
       }
     },

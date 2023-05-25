@@ -45,7 +45,7 @@ Creates a new task queue
   ...,
   worker_options = NULL,
   process_tasks_delay = 0.1,
-  redirect_stdout = TRUE
+  redirect_output = TRUE
 )}\if{html}{\out{</div>}}
 }
 
@@ -64,9 +64,9 @@ object. Should be created with \code{\link[callr:r_session_options]{callr::r_ses
 guarantee that the function will be executed at the desired time, but it
 should not execute earlier.}
 
-\item{\code{redirect_stdout}}{Bool indicating if workers stdout should be redirected
+\item{\code{redirect_output}}{Bool indicating if workers output should be redirected
 to the main process. By default it's redirected. When it's \code{TRUE}, the \code{worker_options}
-\code{stdout} element should be a \code{|}.}
+\code{stdout} and \code{stderr} element should be a \code{|}.}
 }
 \if{html}{\out{</div>}}
 }

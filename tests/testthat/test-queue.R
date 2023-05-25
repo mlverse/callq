@@ -35,5 +35,25 @@ test_that("redirect stdout", {
     })
     result <- extract_value(p)
   })
+
+  expect_equal(result, 10)
+})
+
+test_that("redirect stderr", {
+  q <- task_q$new(num_workers = 1)
+  out <- capture.output(type = "message", {
+    p <- q$push(function() {
+      for (i in 1:10) {
+        message("hello world2")
+      }
+      i
+    })
+    result <- extract_value(p)
+  })
+  expect_snapshot({
+    for (line in out) {
+      cat(line, "\n")
+    }
+  })
   expect_equal(result, 10)
 })
