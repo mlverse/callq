@@ -47,10 +47,10 @@ constraints for it were:
 - Models should be loaded directly in the background sessions.
 - The app code should focus on app logic, not async handling.
 
-Initially we only supported the callr backend. Thanks to
-[@shikokuchuo](https://github.com/shikokuchuo) we also support the mirai
-backend too. Maybe `callq` wouldn’t even exist if I knew how to do it
-with mirai in the first place. See also
+Initially we only supported the callr backend. Thanks to great
+discussions with [@shikokuchuo](https://github.com/shikokuchuo) we now
+also support the mirai backend too. Maybe `callq` wouldn’t even exist if
+I knew how to do it with mirai in the first place. See also
 [mirai.promises](https://github.com/shikokuchuo/mirai.promises).
 
 ## Installation
