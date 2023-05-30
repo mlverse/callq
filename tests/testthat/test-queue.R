@@ -59,3 +59,29 @@ test_that("redirect stderr", {
   })
   expect_equal(result, 10)
 })
+
+test_that("can work with mirai", {
+  q <- task_q$new(num_workers = 2, backend = "mirai")
+  results <- list()
+  for (i in 1:10) {
+    results[[i]] <- q$push(function() {
+      "hello world"
+    }, args = list())
+  }
+  lapply(results, function(x) {
+    expect_equal(extract_value(x), "hello world")
+  })
+})
+
+test_that("can initialize mirai workers", {
+  q <- task_q$new(num_workers = 2, backend = "mirai")
+  init <- q$worker_map(function() {
+    state <<- "hello world"
+    Sys.sleep(5)
+    "init"
+  })
+  results <- lapply(1:10, function(x) q$push(function() state))
+  for (i in seq_along(results)) {
+    expect_equal(extract_value(results[[i]]), "hello world")
+  }
+})

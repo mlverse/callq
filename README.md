@@ -8,10 +8,12 @@
 [![R-CMD-check](https://github.com/mlverse/callq/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mlverse/callq/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-callq implements a multi process task queue using
-[callr](https://github.com/r-lib/callr) as the backend for launching
-process and [promises](https://github.com/rstudio/promises) as the
-interface after pushing tasks to the queue.
+callq implements a multi process task queue that uses
+[promises](https://github.com/rstudio/promises) as the interface after
+pushing tasks to the queue. It supports both
+[callr](https://github.com/r-lib/callr) and
+[mirai](https://github.com/shikokuchuo/mirai) as backends for launching
+worker sessions.
 
 The scope of callq is very similar to the scope of
 `promises::future_promise()`. It is mostly used in
@@ -24,16 +26,32 @@ sessions.
 Compared to the `promises::future_promises` solution it has a few
 differences listed below:
 
-- With callq you can’t configure the backend for task execution, it
-  always uses callr sessions.
 - callq always uses persistent workers, ie, R sessions are created when
   initializing the queue and always reused for evaluating the tasks.
   This also happens with `future` depending on the backend,
   `multisession` reuses sessions too.
-- it’s possible to keep state in callq workers. You can use `<<-` to
-  assign to the parent environment, which is not cleanup up after each
-  task execution.
+- it’s possible to keep state in callq workers. You can use `<<-` or
+  `list2env` to assign to the global environment which is not cleanup up
+  after each task execution.
 - callq allows manually specifying a worker to execute a task.
+
+callq has been created to solve a very specific problem from [this
+app](https://huggingface.co/spaces/dfalbel/gptneox-chat/tree/main). The
+constraints for it were:
+
+- Models take time to load, thus we must have a persistent background
+  session.
+- Models are large objects, and we can’t have an object loaded per user
+  session. Thus we need a global queue, shared between all user
+  sessions.
+- Models should be loaded directly in the background sessions.
+- The app code should focus on app logic, not async handling.
+
+Initially we only supported the callr backend. Thanks to
+[@shikokuchuo](https://github.com/shikokuchuo) we also support the mirai
+backend too. Maybe `callq` wouldn’t even exist if I knew how to do it
+with mirai in the first place. See also
+[mirai.promises](https://github.com/shikokuchuo/mirai.promises).
 
 ## Installation
 

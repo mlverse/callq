@@ -28,6 +28,7 @@ task_q <- R6::R6Class(
     #' @param num_workers Number of workers in the queue. This is the number of R
     #'  processes that will be initialized and available to respond the queue.
     #' @param ... Currently unused. To allow future expansion.
+    #' @param backend Currenttly only 'callr' and 'mirai' are supported.
     #' @param worker_options Numerous options that can be passed to the [callr::r_session]
     #'  object. Should be created with [callr::r_session_options()].
     #' @param process_tasks_delay Number of seconds in the future to delay execution. There is no
@@ -36,13 +37,19 @@ task_q <- R6::R6Class(
     #' @param redirect_output Bool indicating if workers output should be redirected
     #'  to the main process. By default it's redirected. When it's `TRUE`, the `worker_options`
     #'  `stdout` and `stderr` element should be a `|`.
-    initialize = function(num_workers, ..., worker_options = NULL, process_tasks_delay = 0.1, redirect_output = TRUE) {
+    initialize = function(num_workers, ..., backend = "callr", worker_options = NULL, process_tasks_delay = 0.1, redirect_output = TRUE) {
       self$num_workers <- num_workers
-      self$worker_options <- if (is.null(worker_options)) {
-        callr::r_session_options(stdout = "|", stderr= "|")
+      self$worker_options <- worker_options
+
+      self$backend <- backend
+      private$Worker <- if (backend == "callr") {
+        Worker
+      } else if (backend == "mirai") {
+        WorkerMirai
       } else {
-        worker_options
+        cli::cli_abort("Unsupported backend {.val {backend}}")
       }
+
       self$tasks <- fastmap::fastqueue()
       self$process_tasks_delay <- process_tasks_delay
       self$redirect_output <- redirect_output
@@ -109,11 +116,12 @@ task_q <- R6::R6Class(
     }
   ),
   private = list(
+    Worker = NULL,
     start_workers = function() {
       self$workers <- lapply(
         seq_len(self$num_workers),
         function(x) {
-          Worker$new(wait = FALSE, options = self$worker_options, id = x)
+          private$Worker$new(options = self$worker_options, id = x)
         }
       )
     },
@@ -139,13 +147,11 @@ task_q <- R6::R6Class(
         worker$add_task(task)
       }
     },
-    resolve_tasks = function(timeout = 1) {
-      # poll workers for 'timeout' period. if any process is marked as 'ready'
-      # we proceed to resolving the task
-      p <- poll_workers(self$workers, timeout)
-      for (i in seq_along(p)) {
-        if (p[[i]]['process'] == "ready") {
-          self$workers[[i]]$resolve_task()
+    resolve_tasks = function() {
+      # resolve tasks if they are ready
+      for (worker in self$workers) {
+        if (worker$is_resolved()) {
+          worker$resolve_task()
         }
       }
     },
@@ -154,14 +160,14 @@ task_q <- R6::R6Class(
         worker$redirect_output()
       }
     },
-    process_tasks = function(timeout = 1) {
+    process_tasks = function() {
       private$call_tasks()
 
       if (self$redirect_output) {
         private$redirect_output()
       }
 
-      private$resolve_tasks(timeout)
+      private$resolve_tasks()
     },
     later_process = function() {
       if (is.null(self$loop)) {
@@ -224,8 +230,11 @@ Worker <- R6::R6Class(
     tasks = NULL,
     session = NULL,
     id = NULL,
-    initialize = function(..., id = uuid()) {
-      self$session <- callr::r_session$new(...)
+    initialize = function(options, id = uuid()) {
+      if (is.null(options))
+        options <- callr::r_session_options(stdout = "|", stderr= "|")
+
+      self$session <- callr::r_session$new(options = options, wait = FALSE)
       self$tasks <- fastmap::fastqueue()
       self$id <- id
     },
@@ -275,14 +284,80 @@ Worker <- R6::R6Class(
     },
     is_idle = function() {
       self$session$get_state() == "idle"
+    },
+    is_resolved = function() {
+      self$session$poll_process(1) == "ready"
     }
   )
 )
 
-poll_workers <- function(workers, timeout = 1) {
-  sess <- lapply(workers, function(x) x$session)
-  callr::poll(sess, timeout)
-}
+WorkerMirai <- R6::R6Class(
+  public = list(
+    tasks = NULL,
+    id = NULL,
+    initialize = function(options, id = uuid()) {
+      if (is.null(options))
+        options <- list()
+
+      id <- paste0(as.character(id), "-", uuid())
+      opts <- list(n = 1L, dispatcher = FALSE, .compute = id, cleanup = 0L)
+      for(nm in names(options)) {
+        if (nm %in% names(opts)) {
+          cli::cli_abort("The option {.arg {nm}} must not be manually specified.")
+        }
+      }
+      do.call(mirai::daemons, append(options, opts))
+
+      self$tasks <- fastmap::fastqueue()
+      self$id <- id
+    },
+    call_task = function() {
+      if (!self$is_idle()) return()
+      task <- self$tasks$peek()
+      if (is.null(task)) return()
+      private$running_task <- mirai::mirai(
+        {do.call(func, args)},
+        args = task$args,
+        func = task$func,
+        .compute = self$id
+      )
+    },
+    add_task = function(task) {
+      self$tasks$add(task)
+      self$call_task()
+    },
+    resolve_task = function() {
+      out <- .subset2(private$running_task, "data")
+      task <- self$tasks$remove()
+      private$running_task <- NULL
+
+      if (mirai::is_error_value(out)) {
+        task$reject(out)
+      } else {
+        task$resolve(out)
+      }
+
+      # the task has been resolved, but it's possible that worker still has
+      # tasks to run. That's why we try to reschedule call the remaining tasks.
+      self$call_task()
+    },
+    redirect_output = function() {
+      # not implemented
+    },
+    is_idle = function() {
+      is.null(private$running_task)
+    },
+    is_resolved = function() {
+      !is.null(private$running_task) && !mirai::unresolved(private$running_task)
+    }
+  ),
+  private = list(
+    running_task = NULL,
+    finalizer = function() {
+      mirai::daemons(0L, .compute = self$id)
+    }
+  )
+)
 
 #' Used for etsting purposes only
 #' @keywords internal

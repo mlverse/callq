@@ -43,6 +43,7 @@ Creates a new task queue
 \if{html}{\out{<div class="r">}}\preformatted{task_q$new(
   num_workers,
   ...,
+  backend = "callr",
   worker_options = NULL,
   process_tasks_delay = 0.1,
   redirect_output = TRUE
@@ -56,6 +57,8 @@ Creates a new task queue
 processes that will be initialized and available to respond the queue.}
 
 \item{\code{...}}{Currently unused. To allow future expansion.}
+
+\item{\code{backend}}{Currenttly only 'callr' and 'mirai' are supported.}
 
 \item{\code{worker_options}}{Numerous options that can be passed to the \link[callr:r_session]{callr::r_session}
 object. Should be created with \code{\link[callr:r_session_options]{callr::r_session_options()}}.}
